@@ -1,6 +1,5 @@
 Manuscript Analyses
 ================
-Yoona Kang
 2021-05-18
 
 # load packages
@@ -21,7 +20,8 @@ library(interactions)
 # load and inspect data
 
 ``` r
-df <- read.csv('~/Box Sync/Varela_Data_822363/data/cleaned/varela_10_21_2020.csv')
+df <- read.csv('../data/data.csv')
+
 df$cond <- relevel(df$cond, ref='control')
 colnames(df)[colnames(df)=="Q56"] <- "edu"
 

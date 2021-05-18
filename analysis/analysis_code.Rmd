@@ -1,8 +1,11 @@
 ---
 title: "Manuscript Analyses"
-author: "Yoona Kang"
+author: ""
 date: "`r Sys.Date()`"
 output:
+  github_document:
+    toc: true
+    toc_depth: 2
   html_document:
     code_folding: show
     df_print: paged
@@ -12,9 +15,6 @@ output:
     toc_float:
       collapsed: yes
       smooth_scroll: yes
-  github_document:
-    toc: true
-    toc_depth: 2
 ---
 
 ```{r setup, include=FALSE}
@@ -39,7 +39,8 @@ library(interactions)
 
 # load and inspect data
 ```{r}
-df <- read.csv('~/Box Sync/Varela_Data_822363/data/cleaned/varela_10_21_2020.csv')
+df <- read.csv('../data/data.csv')
+
 df$cond <- relevel(df$cond, ref='control')
 colnames(df)[colnames(df)=="Q56"] <- "edu"
 
@@ -178,5 +179,8 @@ interact_plot(test, pred = Mindfulness, modx = speaker_similar_exp,
 
 
 ```
+
+
+
 
 
