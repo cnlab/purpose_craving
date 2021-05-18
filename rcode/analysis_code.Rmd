@@ -1,0 +1,180 @@
+---
+title: "experience similarity and accurate interpersonal understanding"
+author: "Yoona Kang"
+date: "`r Sys.Date()`"
+output: html_document
+ html_document:
+    code_folding: show
+    df_print: paged
+    highlight: tango
+    theme: united
+    toc: yes
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+  github_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+options(scipen=999)
+```
+
+
+# load packages
+```{r}
+library("lme4")
+library("lmerTest")
+library("ggplot2")
+library("Rcpp")
+library("lm.beta")
+library("psych")
+library(jtools)
+```
+
+#load and inspect data
+```{r}
+df <- read.csv('~/Box Sync/Varela_Data_822363/data/cleaned/varela_10_21_2020.csv')
+df$cond <- relevel(df$cond, ref='control')
+colnames(df)[colnames(df)=="Q56"] <- "edu"
+
+table(scale(df$EA_corr)) #2 outliers
+table(scale(df$factual_accuracy)) #no outlier
+table(scale(df$speaker_similar_exp))#no outlier
+table(scale(df$maas))#no outlier
+df2 <- subset(df, EA_corr > .5) #excluding two outliers
+
+```
+
+
+#demographics
+```{r}
+summary(df$age)
+sd(df$age)
+table (df$race)
+```
+
+#MAAS crombach's alpha
+```{r}
+df_maas <- df[ , c("maas1", "maas2", "maas3", "maas4", "maas5", "maas6", "maas7",
+                      "maas8", "maas9","maas10", "maas11","maas12","maas13", "maas14","maas15")]    
+alpha(df_maas)
+```
+
+
+# define function to make results table
+```{r}
+make_table = function(model) {
+  require(broom)
+  require(knitr)
+  
+  print(data.frame(R2 = summary(model)$r.squared,
+             adjusted_R2 = summary(model)$adj.r.squared,
+             df = summary(model)$df[2]) %>%
+    knitr::kable(format = "pandoc", digits = 3))
+    
+  print(model %>%
+    broom::tidy(conf.int = TRUE) %>%
+    mutate(p.value = ifelse(p.value < .001, "< .001", gsub("0.(.*)", ".\\1", sprintf("%.3f", p.value))),
+           `95% CI` = sprintf("%.3f, %.3f", conf.low, conf.high),
+           term = gsub("as.factor", "", term)) %>%
+    select(-contains("conf")) %>%
+    rename("b" = estimate,
+           "SE" = std.error,
+           "t" = statistic,
+           "p" = p.value) %>%
+    select(term, b, `95% CI`, everything()) %>%
+    knitr::kable(format = "pandoc", digits = 3))
+}
+```
+
+#Results
+
+#past experience --> factual accuracy
+```{r}
+test <- lm(factual_accuracy ~speaker_similar_exp+cond,df)
+make_table(test)
+```
+#past experience --> empathic accuracy
+```{r}
+test <-lm(EA_corr ~speaker_similar_exp+cond,df)
+make_table(test)
+```
+
+#excluding outliers
+```{r}
+test <-lm(EA_corr ~speaker_similar_exp+cond,df2)
+make_table(test)
+```
+#mindfulness * experience similarity --> factual accuracy
+```{r}
+test <-lm(factual_accuracy ~maas*speaker_similar_exp+cond,df)
+make_table(test)
+```
+
+#mindfulness * experience similarity --> factual accuracy
+```{r}
+test <-lm(EA_corr ~ maas*speaker_similar_exp +cond,df)
+make_table(test)
+#excluding outliers
+test <-lm(EA_corr ~ maas*speaker_similar_exp +cond,df2)
+make_table(test)
+```
+
+#simple slopes analysis
+```{r}
+print(mass_low<- round((mean(df$maas) - sd(df$maas)),1))
+print(mass_mid<- round((mean(df$maas)),1))
+print(mass_high <- round((mean(df$maas) + sd(df$maas)),1))
+
+#center variables
+df$maas_cen = df$maas - mean(df$maas,na.rm=T)
+df$exp_cen = df$speaker_similar_exp- mean(df$speaker_similar_exp,na.rm=T)
+df$EA_corr_cen = df$EA_corr - mean(df$EA_corr,na.rm=T)
+
+#+-sd for mindfulness
+df$maas_low <- df$maas_cen + sd(df$maas_cen, na.rm=T)
+df$maas_high <- df$maas_cen - sd(df$maas_cen, na.rm=T)
+
+test <- lm(EA_corr_cen~ exp_cen*maas_high+as.factor(cond), df)
+make_table(test)
+test <- lm(EA_corr_cen ~ exp_cen*maas_cen +as.factor(cond), df)
+make_table(test)
+test <- lm(EA_corr_cen ~ exp_cen*maas_low +as.factor(cond), df)
+make_table(test)
+```
+
+
+#mindfulness --> empathic accuracy at different levels of experience similarity
+```{r}
+df$exp_low <- df$exp_cen + sd(df$exp_cen, na.rm=T)
+df$exp_high <- df$exp_cen - sd(df$exp_cen, na.rm=T)
+
+test <- lm(EA_corr_cen~ maas*exp_low+as.factor(cond), df)
+make_table(test)
+test <- lm(EA_corr_cen~ maas*exp_cen+as.factor(cond), df)
+make_table(test)
+test <- lm(EA_corr_cen~ maas*exp_high+as.factor(cond), df)
+make_table(test)
+
+```
+
+
+#Figures
+```{r}
+##Figure 1
+
+df$Mindfulness <- df$maas
+test <- lm(EA_corr~ Mindfulness * speaker_similar_exp +as.factor(cond), df)
+interact_plot(test, pred = speaker_similar_exp, modx = Mindfulness,
+              x.label = "Experience similarity", y.label = "Empathic accuracy", interval=T, int_type="confidence") 
+
+interact_plot(test, pred = Mindfulness, modx = speaker_similar_exp,
+              x.label = "Mindfulness", y.label = "Empathic accuracy", interval=T, int_type="confidence") 
+
+
+```
+
+
