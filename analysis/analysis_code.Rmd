@@ -1,9 +1,9 @@
 ---
-title: "experience similarity and accurate interpersonal understanding"
+title: "Manuscript Analyses"
 author: "Yoona Kang"
 date: "`r Sys.Date()`"
-output: html_document
- html_document:
+output:
+  html_document:
     code_folding: show
     df_print: paged
     highlight: tango
@@ -32,9 +32,12 @@ library("Rcpp")
 library("lm.beta")
 library("psych")
 library(jtools)
+library(dplyr)
+library(tidyr)
+library(interactions)
 ```
 
-#load and inspect data
+# load and inspect data
 ```{r}
 df <- read.csv('~/Box Sync/Varela_Data_822363/data/cleaned/varela_10_21_2020.csv')
 df$cond <- relevel(df$cond, ref='control')
@@ -49,14 +52,14 @@ df2 <- subset(df, EA_corr > .5) #excluding two outliers
 ```
 
 
-#demographics
+# demographics
 ```{r}
 summary(df$age)
 sd(df$age)
 table (df$race)
 ```
 
-#MAAS crombach's alpha
+# MAAS crombach's alpha
 ```{r}
 df_maas <- df[ , c("maas1", "maas2", "maas3", "maas4", "maas5", "maas6", "maas7",
                       "maas8", "maas9","maas10", "maas11","maas12","maas13", "maas14","maas15")]    
@@ -90,31 +93,30 @@ make_table = function(model) {
 }
 ```
 
-#Results
-
-#past experience --> factual accuracy
+# Results
+# past experience --> factual accuracy
 ```{r}
 test <- lm(factual_accuracy ~speaker_similar_exp+cond,df)
 make_table(test)
 ```
-#past experience --> empathic accuracy
+# past experience --> empathic accuracy
 ```{r}
 test <-lm(EA_corr ~speaker_similar_exp+cond,df)
 make_table(test)
 ```
 
-#excluding outliers
+# excluding outliers
 ```{r}
 test <-lm(EA_corr ~speaker_similar_exp+cond,df2)
 make_table(test)
 ```
-#mindfulness * experience similarity --> factual accuracy
+# mindfulness * experience similarity --> factual accuracy
 ```{r}
 test <-lm(factual_accuracy ~maas*speaker_similar_exp+cond,df)
 make_table(test)
 ```
 
-#mindfulness * experience similarity --> factual accuracy
+# mindfulness * experience similarity --> factual accuracy
 ```{r}
 test <-lm(EA_corr ~ maas*speaker_similar_exp +cond,df)
 make_table(test)
@@ -123,7 +125,7 @@ test <-lm(EA_corr ~ maas*speaker_similar_exp +cond,df2)
 make_table(test)
 ```
 
-#simple slopes analysis
+# simple slopes analysis
 ```{r}
 print(mass_low<- round((mean(df$maas) - sd(df$maas)),1))
 print(mass_mid<- round((mean(df$maas)),1))
@@ -147,7 +149,7 @@ make_table(test)
 ```
 
 
-#mindfulness --> empathic accuracy at different levels of experience similarity
+# mindfulness --> empathic accuracy at different levels of experience similarity
 ```{r}
 df$exp_low <- df$exp_cen + sd(df$exp_cen, na.rm=T)
 df$exp_high <- df$exp_cen - sd(df$exp_cen, na.rm=T)
@@ -162,7 +164,7 @@ make_table(test)
 ```
 
 
-#Figures
+# Figures
 ```{r}
 ##Figure 1
 
