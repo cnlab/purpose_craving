@@ -117,7 +117,7 @@ test <-lm(factual_accuracy ~maas*speaker_similar_exp+cond,df)
 make_table(test)
 ```
 
-# mindfulness * experience similarity --> factual accuracy
+# mindfulness * experience similarity --> empathic accuracy
 ```{r}
 test <-lm(EA_corr ~ maas*speaker_similar_exp +cond,df)
 make_table(test)
