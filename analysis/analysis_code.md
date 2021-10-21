@@ -1,6 +1,6 @@
 Manuscript Analyses
 ================
-2021-06-01
+2021-10-21
 
 # load packages
 
@@ -16,6 +16,8 @@ library(dplyr)
 library(tidyr)
 library(interactions)
 library(ggsci)
+library(psych)
+library(devtools)
 ```
 
 # load and inspect data
@@ -24,9 +26,18 @@ library(ggsci)
 df <- read.csv('../data/data.csv')
 
 df$cond <- relevel(df$cond, ref='control')
-colnames(df)[colnames(df)=="Q56"] <- "edu"
 
-table(scale(df$EA_corr)) #2 outliers
+
+#calculate MAAS mean scores and inspect
+df$maas <- rowMeans(df[,c("maas1", "maas2", "maas3", "maas4", "maas5", "maas6", "maas7", "maas8", "maas9", "maas10", "maas11", "maas12", "maas13", "maas14", "maas15")])
+hist(df$maas)
+```
+
+![](analysis_code_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
+
+``` r
+#inspect data and outliers
+table(scale(df$EA_corr)) 
 ```
 
     ## 
@@ -80,7 +91,7 @@ table(scale(df$EA_corr)) #2 outliers
     ##                    1                    1                    1
 
 ``` r
-table(scale(df$factual_accuracy)) #no outlier
+table(scale(df$factual_accuracy)) 
 ```
 
     ## 
@@ -100,48 +111,45 @@ table(scale(df$factual_accuracy)) #no outlier
     ##                  1
 
 ``` r
-table(scale(df$speaker_similar_exp))#no outlier, only one person for answer 3
+table(scale(df$maas))
 ```
 
     ## 
-    ## -0.842088836162796    1.0526110452035   2.94731092656979 
-    ##                 41                 30                  1
+    ##   -2.36068413774428   -2.18343140385221   -1.91755230301412   -1.65167320217603 
+    ##                   1                   1                   2                   1 
+    ##      -1.56304683523   -1.47442046828397   -1.38579410133794   -1.29716773439191 
+    ##                   1                   1                   2                   2 
+    ##   -1.20854136744587  -0.942662266607782  -0.854035899661752  -0.765409532715721 
+    ##                   1                   3                   1                   2 
+    ##   -0.67678316576969  -0.588156798823659  -0.499530431877628  -0.410904064931597 
+    ##                   2                   4                   2                   1 
+    ##  -0.322277697985567  -0.233651331039536  -0.145024964093505 -0.0563985971474742 
+    ##                   3                   1                   2                   2 
+    ##   0.120854136744587   0.209480503690618   0.298106870636649   0.386733237582679 
+    ##                   4                   2                   3                   3 
+    ##   0.475359604528711   0.563985971474742   0.652612338420772   0.741238705366803 
+    ##                   4                   4                   2                   3 
+    ##   0.829865072312834   0.918491439258865     1.0071178062049    1.09574417315093 
+    ##                   2                   1                   4                   2 
+    ##    1.18437054009696    1.27299690704299    1.36162327398902    1.45024964093505 
+    ##                   2                   1                   2                   1 
+    ##    1.62750237482711    2.69101877817948 
+    ##                   1                   1
 
 ``` r
-df<- mutate(df, similar_combined= case_when(
+table(df$speaker_similar_exp)# only one person for answer 3
+```
+
+    ## 
+    ##  1  2  3 
+    ## 41 30  1
+
+``` r
+df<- dplyr::mutate(df, similar_combined= case_when(
   speaker_similar_exp == 1  ~ 0, 
   speaker_similar_exp == 2  ~ 1, 
   speaker_similar_exp == 3  ~ 1
 ))  
-df$similar_combined_nur <- df$similar_combined 
-df$similar_combined <- as.factor(df$similar_combined)
-table(scale(df$maas))#no outlier
-```
-
-    ## 
-    ##   -2.36068413763512   -2.18343140419136   -1.91755230336103   -1.65167320253069 
-    ##                   1                   1                   2                   1 
-    ##   -1.56304683514411   -1.47442046775754   -1.38579410170036   -1.29716773431378 
-    ##                   1                   1                   2                   2 
-    ##    -1.2085413669272  -0.942662266096866  -0.854035900039684  -0.765409532653106 
-    ##                   1                   3                   1                   2 
-    ##  -0.676783165266529  -0.588156799209347  -0.499530431822771  -0.410904064436193 
-    ##                   2                   4                   2                   1 
-    ##  -0.322277698379012  -0.233651330992434  -0.145024963605858 -0.0563985975486757 
-    ##                   3                   1                   2                   2 
-    ##   0.120854137224479    0.20948050328166   0.298106870668237   0.386733238054814 
-    ##                   4                   2                   3                   3 
-    ##   0.475359604111997   0.563985971498574    0.65261233888515   0.741238704942332 
-    ##                   4                   4                   2                   3 
-    ##    0.82986507232891   0.918491439715487    1.00711780577267    1.09574417315924 
-    ##                   2                   1                   4                   2 
-    ##    1.18437054054582      1.272996906603    1.36162327398958    1.45024964137616 
-    ##                   2                   1                   2                   1 
-    ##    1.62750237481992    2.69101877814126 
-    ##                   1                   1
-
-``` r
-df2 <- subset(df, EA_corr > .5) #excluding two outliers
 ```
 
 # demographics
@@ -239,12 +247,48 @@ alpha(df_maas)
     ## maas14 0.04 0.12 0.29 0.30 0.18 0.08    0
     ## maas15 0.03 0.09 0.21 0.17 0.29 0.22    0
 
+# transform variables
+
+``` r
+#Fisher's r to z transformation
+psych::describe(df$EA_corr)
+```
+
+    ##    vars  n mean   sd median trimmed  mad  min  max range  skew kurtosis   se
+    ## X1    1 72 0.76 0.09   0.77    0.77 0.09 0.48 0.94  0.45 -0.87     1.03 0.01
+
+``` r
+# skew  kurtosis  se
+#-0.87  1.03      0.01
+df$EA_corr_raw =df$EA_corr
+df$EA_corr = fisherz(df$EA_corr)
+
+psych::describe(df$EA_corr)
+```
+
+    ##    vars  n mean   sd median trimmed  mad  min  max range skew kurtosis   se
+    ## X1    1 72 1.04 0.22   1.02    1.04 0.21 0.53 1.71  1.18 0.17     0.34 0.03
+
+``` r
+#skew   kurtosis  se
+#0.17   0.34      0.03
+
+#mean-center variables
+df$maas = df$maas - mean(df$maas,na.rm=T)
+df$EA_corr = df$EA_corr - mean(df$EA_corr,na.rm=T)
+
+df$similar_combined_num = df$similar_combined- mean(df$similar_combined,na.rm=T)
+df$similar_combined <- as.factor(df$similar_combined_num)  
+df$factual_accuracy = df$factual_accuracy - mean(df$factual_accuracy,na.rm=T)
+```
+
 # define function to make results table
 
 ``` r
 make_table = function(model) {
   require(broom)
   require(knitr)
+  require(lm.beta)
   
   print(data.frame(R2 = summary(model)$r.squared,
              adjusted_R2 = summary(model)$adj.r.squared,
@@ -268,70 +312,10 @@ make_table = function(model) {
 
 # Results
 
-# past experience –\> factual accuracy
-
-``` r
-test <- lm(factual_accuracy ~similar_combined+cond,df)
-make_table(test)
-```
-
-    ## 
-    ## 
-    ##     R2   adjusted_R2   df
-    ## ------  ------------  ---
-    ##  0.064         0.037   68
-    ## 
-    ## 
-    ## term                      b  95% CI               SE        t  p      
-    ## ------------------  -------  ---------------  ------  -------  -------
-    ## (Intercept)          44.984  42.526, 47.442    1.232   36.518  < .001 
-    ## similar_combined1    -3.418  -6.581, -0.255    1.585   -2.156  .035   
-    ## condcompassion        0.802  -2.336, 3.940     1.572    0.510  .612
-
-# past experience –\> empathic accuracy
-
-``` r
-test <-lm(EA_corr ~similar_combined+cond,df)
-make_table(test)
-```
-
-    ## 
-    ## 
-    ##     R2   adjusted_R2   df
-    ## ------  ------------  ---
-    ##  0.083         0.057   69
-    ## 
-    ## 
-    ## term                      b  95% CI              SE        t  p      
-    ## ------------------  -------  --------------  ------  -------  -------
-    ## (Intercept)           0.759  0.727, 0.791     0.016   47.004  < .001 
-    ## similar_combined1    -0.036  -0.078, 0.005    0.021   -1.764  .082   
-    ## condcompassion        0.041  0.000, 0.082     0.020    2.007  .049
-
-# excluding outliers
-
-``` r
-test <-lm(EA_corr ~similar_combined+cond,df2)
-make_table(test)
-```
-
-    ## 
-    ## 
-    ##     R2   adjusted_R2   df
-    ## ------  ------------  ---
-    ##  0.175          0.15   67
-    ## 
-    ## 
-    ## term                      b  95% CI               SE        t  p      
-    ## ------------------  -------  ---------------  ------  -------  -------
-    ## (Intercept)           0.772  0.746, 0.799      0.013   57.500  < .001 
-    ## similar_combined1    -0.052  -0.086, -0.018    0.017   -3.046  .003   
-    ## condcompassion        0.045  0.011, 0.078      0.017    2.638  .010
-
 # mindfulness \* experience similarity –\> factual accuracy
 
 ``` r
-test <-lm(factual_accuracy ~maas*similar_combined+cond,df)
+test <-lm(factual_accuracy ~similar_combined*maas+cond,df)
 make_table(test)
 ```
 
@@ -342,152 +326,199 @@ make_table(test)
     ##  0.071         0.015   66
     ## 
     ## 
-    ## term                           b  95% CI               SE        t  p      
-    ## -----------------------  -------  ---------------  ------  -------  -------
-    ## (Intercept)               44.513  32.682, 56.343    5.925    7.512  < .001 
-    ## maas                       0.127  -2.852, 3.106     1.492    0.085  .932   
-    ## similar_combined1         -6.551  -22.605, 9.502    8.041   -0.815  .418   
-    ## condcompassion             0.753  -2.425, 3.932     1.592    0.473  .638   
-    ## maas:similar_combined1     0.848  -3.288, 4.983     2.071    0.409  .684
+    ## term                                           b  95% CI               SE        t  p    
+    ## ---------------------------------------  -------  ---------------  ------  -------  -----
+    ## (Intercept)                                1.104  -1.404, 3.613     1.256    0.879  .383 
+    ## similar_combined0.569444444444444         -3.351  -6.571, -0.132    1.613   -2.078  .042 
+    ## maas                                       0.127  -2.852, 3.106     1.492    0.085  .932 
+    ## condcompassion                             0.753  -2.425, 3.932     1.592    0.473  .638 
+    ## similar_combined0.569444444444444:maas     0.848  -3.288, 4.983     2.071    0.409  .684
+
+``` r
+lm.beta(test)
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = factual_accuracy ~ similar_combined * maas + cond, 
+    ##     data = df)
+    ## 
+    ## Standardized Coefficients::
+    ##                            (Intercept)      similar_combined0.569444444444444 
+    ##                             0.00000000                            -0.25101054 
+    ##                                   maas                         condcompassion 
+    ##                             0.01462473                             0.05688250 
+    ## similar_combined0.569444444444444:maas 
+    ##                             0.07014833
 
 # mindfulness \* experience similarity –\> empathic accuracy
 
 ``` r
-test <-lm(EA_corr ~ maas*similar_combined +cond,df)
+test <-lm(EA_corr ~ similar_combined*maas +cond,df)
 make_table(test)
 ```
 
     ## 
     ## 
-    ##     R2   adjusted_R2   df
-    ## ------  ------------  ---
-    ##  0.165         0.115   67
+    ##    R2   adjusted_R2   df
+    ## -----  ------------  ---
+    ##  0.22         0.174   67
     ## 
     ## 
-    ## term                           b  95% CI              SE        t  p      
-    ## -----------------------  -------  --------------  ------  -------  -------
-    ## (Intercept)                0.573  0.425, 0.721     0.074    7.722  < .001 
-    ## maas                       0.048  0.011, 0.085     0.019    2.562  .013   
-    ## similar_combined1          0.156  -0.045, 0.357    0.101    1.547  .127   
-    ## condcompassion             0.042  0.002, 0.082     0.020    2.114  .038   
-    ## maas:similar_combined1    -0.050  -0.102, 0.002    0.026   -1.914  .060
+    ## term                                           b  95% CI               SE        t  p    
+    ## ---------------------------------------  -------  ---------------  ------  -------  -----
+    ## (Intercept)                               -0.018  -0.092, 0.056     0.037   -0.485  .629 
+    ## similar_combined0.569444444444444         -0.110  -0.204, -0.016    0.047   -2.327  .023 
+    ## maas                                       0.123  0.035, 0.210      0.044    2.789  .007 
+    ## condcompassion                             0.117  0.024, 0.210      0.047    2.509  .015 
+    ## similar_combined0.569444444444444:maas    -0.130  -0.252, -0.008    0.061   -2.131  .037
 
 ``` r
-#excluding outliers
-test <-lm(EA_corr ~ maas*similar_combined +cond,df2)
-make_table(test)
+lm.beta(test)
 ```
 
     ## 
+    ## Call:
+    ## lm(formula = EA_corr ~ similar_combined * maas + cond, data = df)
     ## 
-    ##     R2   adjusted_R2   df
-    ## ------  ------------  ---
-    ##  0.229         0.182   65
-    ## 
-    ## 
-    ## term                           b  95% CI              SE        t  p      
-    ## -----------------------  -------  --------------  ------  -------  -------
-    ## (Intercept)                0.639  0.510, 0.767     0.064    9.949  < .001 
-    ## maas                       0.034  0.002, 0.066     0.016    2.128  .037   
-    ## similar_combined1          0.088  -0.082, 0.259    0.085    1.038  .303   
-    ## condcompassion             0.046  0.013, 0.080     0.017    2.781  .007   
-    ## maas:similar_combined1    -0.036  -0.080, 0.008    0.022   -1.649  .104
+    ## Standardized Coefficients::
+    ##                            (Intercept)      similar_combined0.569444444444444 
+    ##                              0.0000000                             -0.2548406 
+    ##                                   maas                         condcompassion 
+    ##                              0.4353589                              0.2736680 
+    ## similar_combined0.569444444444444:maas 
+    ##                             -0.3317002
 
 # simple slopes analysis
 
 ``` r
-print(mass_low<- round((mean(df$maas) - sd(df$maas)),1))
-```
-
-    ## [1] 3
-
-``` r
-print(mass_mid<- round((mean(df$maas)),1))
-```
-
-    ## [1] 3.8
-
-``` r
-print(mass_high <- round((mean(df$maas) + sd(df$maas)),1))
-```
-
-    ## [1] 4.5
-
-``` r
-#center variables
-df$maas_cen = df$maas - mean(df$maas,na.rm=T)
-df$exp_cen = df$similar_combined_nur- mean(df$similar_combined_nur,na.rm=T)
-df$exp_cen <- as.factor(df$exp_cen)  
-df$EA_corr_cen = df$EA_corr - mean(df$EA_corr,na.rm=T)
-
 #+-sd for mindfulness
-df$maas_low <- df$maas_cen + sd(df$maas_cen, na.rm=T)
-df$maas_high <- df$maas_cen - sd(df$maas_cen, na.rm=T)
+df$maas_low <- df$maas + sd(df$maas, na.rm=T)
+df$maas_high <- df$maas - sd(df$maas, na.rm=T)
 
-test <- lm(EA_corr_cen~ exp_cen*maas_high+as.factor(cond), df)
+test <- lm(EA_corr~ similar_combined*maas_high+as.factor(cond), df)
 make_table(test)
 ```
 
     ## 
     ## 
-    ##     R2   adjusted_R2   df
-    ## ------  ------------  ---
-    ##  0.165         0.115   67
+    ##    R2   adjusted_R2   df
+    ## -----  ------------  ---
+    ##  0.22         0.174   67
     ## 
     ## 
-    ## term                                       b  95% CI               SE        t  p    
-    ## -----------------------------------  -------  ---------------  ------  -------  -----
-    ## (Intercept)                            0.026  -0.013, 0.066     0.020    1.325  .190 
-    ## exp_cen0.569444444444444              -0.070  -0.125, -0.014    0.028   -2.515  .014 
-    ## maas_high                              0.048  0.011, 0.085      0.019    2.562  .013 
-    ## (cond)compassion                       0.042  0.002, 0.082      0.020    2.114  .038 
-    ## exp_cen0.569444444444444:maas_high    -0.050  -0.102, 0.002     0.026   -1.914  .060
+    ## term                                                b  95% CI               SE        t  p    
+    ## --------------------------------------------  -------  ---------------  ------  -------  -----
+    ## (Intercept)                                     0.074  -0.019, 0.167     0.047    1.596  .115 
+    ## similar_combined0.569444444444444              -0.208  -0.337, -0.078    0.065   -3.201  .002 
+    ## maas_high                                       0.123  0.035, 0.210      0.044    2.789  .007 
+    ## (cond)compassion                                0.117  0.024, 0.210      0.047    2.509  .015 
+    ## similar_combined0.569444444444444:maas_high    -0.130  -0.252, -0.008    0.061   -2.131  .037
 
 ``` r
-test <- lm(EA_corr_cen ~ exp_cen*maas_cen +as.factor(cond), df)
-make_table(test)
+lm.beta(test)
 ```
 
     ## 
+    ## Call:
+    ## lm(formula = EA_corr ~ similar_combined * maas_high + as.factor(cond), 
+    ##     data = df)
     ## 
-    ##     R2   adjusted_R2   df
-    ## ------  ------------  ---
-    ##  0.165         0.115   67
-    ## 
-    ## 
-    ## term                                      b  95% CI              SE        t  p    
-    ## ----------------------------------  -------  --------------  ------  -------  -----
-    ## (Intercept)                          -0.010  -0.041, 0.022    0.016   -0.622  .536 
-    ## exp_cen0.569444444444444             -0.032  -0.072, 0.008    0.020   -1.595  .116 
-    ## maas_cen                              0.048  0.011, 0.085     0.019    2.562  .013 
-    ## (cond)compassion                      0.042  0.002, 0.082     0.020    2.114  .038 
-    ## exp_cen0.569444444444444:maas_cen    -0.050  -0.102, 0.002    0.026   -1.914  .060
+    ## Standardized Coefficients::
+    ##                                 (Intercept) 
+    ##                                   0.0000000 
+    ##           similar_combined0.569444444444444 
+    ##                                  -0.4818452 
+    ##                                   maas_high 
+    ##                                   0.4353589 
+    ##                   as.factor(cond)compassion 
+    ##                                   0.2736680 
+    ## similar_combined0.569444444444444:maas_high 
+    ##                                  -0.4098268
 
 ``` r
-test <- lm(EA_corr_cen ~ exp_cen*maas_low +as.factor(cond), df)
+test <- lm(EA_corr ~ similar_combined*maas +as.factor(cond), df)
 make_table(test)
 ```
 
     ## 
     ## 
-    ##     R2   adjusted_R2   df
-    ## ------  ------------  ---
-    ##  0.165         0.115   67
+    ##    R2   adjusted_R2   df
+    ## -----  ------------  ---
+    ##  0.22         0.174   67
     ## 
     ## 
-    ## term                                      b  95% CI               SE        t  p    
-    ## ----------------------------------  -------  ---------------  ------  -------  -----
-    ## (Intercept)                          -0.046  -0.091, -0.001    0.022   -2.049  .044 
-    ## exp_cen0.569444444444444              0.005  -0.051, 0.062     0.028    0.190  .850 
-    ## maas_low                              0.048  0.011, 0.085      0.019    2.562  .013 
-    ## (cond)compassion                      0.042  0.002, 0.082      0.020    2.114  .038 
-    ## exp_cen0.569444444444444:maas_low    -0.050  -0.102, 0.002     0.026   -1.914  .060
+    ## term                                           b  95% CI               SE        t  p    
+    ## ---------------------------------------  -------  ---------------  ------  -------  -----
+    ## (Intercept)                               -0.018  -0.092, 0.056     0.037   -0.485  .629 
+    ## similar_combined0.569444444444444         -0.110  -0.204, -0.016    0.047   -2.327  .023 
+    ## maas                                       0.123  0.035, 0.210      0.044    2.789  .007 
+    ## (cond)compassion                           0.117  0.024, 0.210      0.047    2.509  .015 
+    ## similar_combined0.569444444444444:maas    -0.130  -0.252, -0.008    0.061   -2.131  .037
+
+``` r
+lm.beta(test)
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = EA_corr ~ similar_combined * maas + as.factor(cond), 
+    ##     data = df)
+    ## 
+    ## Standardized Coefficients::
+    ##                            (Intercept)      similar_combined0.569444444444444 
+    ##                              0.0000000                             -0.2548406 
+    ##                                   maas              as.factor(cond)compassion 
+    ##                              0.4353589                              0.2736680 
+    ## similar_combined0.569444444444444:maas 
+    ##                             -0.3317002
+
+``` r
+test <- lm(EA_corr ~ similar_combined*maas_low +as.factor(cond), df)
+make_table(test)
+```
+
+    ## 
+    ## 
+    ##    R2   adjusted_R2   df
+    ## -----  ------------  ---
+    ##  0.22         0.174   67
+    ## 
+    ## 
+    ## term                                               b  95% CI               SE        t  p    
+    ## -------------------------------------------  -------  ---------------  ------  -------  -----
+    ## (Intercept)                                   -0.110  -0.215, -0.005    0.053   -2.096  .040 
+    ## similar_combined0.569444444444444             -0.012  -0.145, 0.121     0.067   -0.180  .858 
+    ## maas_low                                       0.123  0.035, 0.210      0.044    2.789  .007 
+    ## (cond)compassion                               0.117  0.024, 0.210      0.047    2.509  .015 
+    ## similar_combined0.569444444444444:maas_low    -0.130  -0.252, -0.008    0.061   -2.131  .037
+
+``` r
+lm.beta(test)
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = EA_corr ~ similar_combined * maas_low + as.factor(cond), 
+    ##     data = df)
+    ## 
+    ## Standardized Coefficients::
+    ##                                (Intercept) 
+    ##                                 0.00000000 
+    ##          similar_combined0.569444444444444 
+    ##                                -0.02783601 
+    ##                                   maas_low 
+    ##                                 0.43535894 
+    ##                  as.factor(cond)compassion 
+    ##                                 0.27366805 
+    ## similar_combined0.569444444444444:maas_low 
+    ##                                -0.39389628
 
 # mindfulness –\> empathic accuracy among subgroups of participants with vs. without similar past experience
 
 ``` r
-similar_no =subset(df, similar_combined==0)
-similar_yes =subset(df, similar_combined==1)
+similar_no =subset(df, speaker_similar_exp==1)
+similar_yes =subset(df, speaker_similar_exp==2 |  speaker_similar_exp == 3)
 
 test <- lm(EA_corr~ maas+as.factor(cond), similar_no)
 make_table(test)
@@ -497,14 +528,26 @@ make_table(test)
     ## 
     ##     R2   adjusted_R2   df
     ## ------  ------------  ---
-    ##  0.126          0.08   38
+    ##  0.164          0.12   38
     ## 
     ## 
-    ## term                    b  95% CI              SE       t  p      
-    ## -----------------  ------  --------------  ------  ------  -------
-    ## (Intercept)         0.580  0.402, 0.758     0.088   6.597  < .001 
-    ## maas                0.048  0.003, 0.092     0.022   2.168  .036   
-    ## (cond)compassion    0.028  -0.034, 0.091    0.031   0.919  .364
+    ## term                     b  95% CI              SE        t  p    
+    ## -----------------  -------  --------------  ------  -------  -----
+    ## (Intercept)         -0.014  -0.113, 0.086    0.049   -0.280  .781 
+    ## maas                 0.122  0.016, 0.229     0.053    2.332  .025 
+    ## (cond)compassion     0.107  -0.042, 0.256    0.074    1.460  .153
+
+``` r
+lm.beta(test)
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = EA_corr ~ maas + as.factor(cond), data = similar_no)
+    ## 
+    ## Standardized Coefficients::
+    ##               (Intercept)                      maas as.factor(cond)compassion 
+    ##                 0.0000000                 0.3459894                 0.2166349
 
 ``` r
 test <- lm(EA_corr~ maas+as.factor(cond), similar_yes)
@@ -515,14 +558,26 @@ make_table(test)
     ## 
     ##     R2   adjusted_R2   df
     ## ------  ------------  ---
-    ##  0.222         0.167   28
+    ##  0.207          0.15   28
     ## 
     ## 
-    ## term                     b  95% CI              SE        t  p      
-    ## -----------------  -------  --------------  ------  -------  -------
-    ## (Intercept)          0.721  0.621, 0.822     0.049   14.678  < .001 
-    ## maas                -0.003  -0.029, 0.023    0.013   -0.207  .838   
-    ## (cond)compassion     0.060  0.017, 0.104     0.021    2.828  .009
+    ## term                     b  95% CI               SE        t  p      
+    ## -----------------  -------  ---------------  ------  -------  -------
+    ## (Intercept)         -0.135  -0.210, -0.060    0.037   -3.692  < .001 
+    ## maas                -0.008  -0.067, 0.050     0.029   -0.285  .778   
+    ## (cond)compassion     0.130  0.031, 0.228      0.048    2.701  .012
+
+``` r
+lm.beta(test)
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = EA_corr ~ maas + as.factor(cond), data = similar_yes)
+    ## 
+    ## Standardized Coefficients::
+    ##               (Intercept)                      maas as.factor(cond)compassion 
+    ##                 0.0000000                -0.0480257                 0.4556634
 
 # Figures
 
@@ -530,12 +585,12 @@ make_table(test)
 
 ``` r
 df$Mindfulness <- df$maas
-test <- lm(EA_corr~ Mindfulness * similar_combined_nur +as.factor(cond), df)
-interact_plot(test, pred = similar_combined_nur, modx = Mindfulness,
+test <- lm(EA_corr~ Mindfulness * similar_combined_num +as.factor(cond), df)
+interact_plot(test, pred = similar_combined_num, modx = Mindfulness,
               x.label = "Experience similarity", y.label = "Empathic accuracy", interval=T, int_type="confidence") 
 ```
 
-![](analysis_code_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+![](analysis_code_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
 ## Figure 1B
 
@@ -551,8 +606,275 @@ ggplot(df3) +
   theme_bw() + theme(panel.grid.minor = element_blank())+  
   theme(panel.grid.major = element_blank()) +  
   xlab("mindfulness")  + ylab("empathic accuracy") +
-  xlim (2,6)+
   scale_color_jama()
 ```
 
-![](analysis_code_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+![](analysis_code_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+
+``` r
+#SI2. Results using non-Fisher r to z transformed empathic accuracy scores
+
+test <-lm(EA_corr_raw ~ similar_combined*maas+cond,df)
+make_table(test)
+```
+
+    ## 
+    ## 
+    ##     R2   adjusted_R2   df
+    ## ------  ------------  ---
+    ##  0.165         0.115   67
+    ## 
+    ## 
+    ## term                                           b  95% CI              SE        t  p      
+    ## ---------------------------------------  -------  --------------  ------  -------  -------
+    ## (Intercept)                                0.754  0.723, 0.785     0.016   47.842  < .001 
+    ## similar_combined0.569444444444444         -0.032  -0.072, 0.008    0.020   -1.595  .116   
+    ## maas                                       0.048  0.011, 0.085     0.019    2.562  .013   
+    ## condcompassion                             0.042  0.002, 0.082     0.020    2.114  .038   
+    ## similar_combined0.569444444444444:maas    -0.050  -0.102, 0.002    0.026   -1.914  .060
+
+``` r
+lm.beta(test)
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = EA_corr_raw ~ similar_combined * maas + cond, data = df)
+    ## 
+    ## Standardized Coefficients::
+    ##                            (Intercept)      similar_combined0.569444444444444 
+    ##                              0.0000000                             -0.1806585 
+    ##                                   maas                         condcompassion 
+    ##                              0.4137751                              0.2385746 
+    ## similar_combined0.569444444444444:maas 
+    ##                             -0.3083990
+
+``` r
+#SI3. Treating the experience similarity as a continuous variable. 
+
+df$similar = df$speaker_similar_exp- mean(df$speaker_similar_exp,na.rm=T)
+
+test <-lm(factual_accuracy ~similar*maas+cond,df)
+make_table(test)
+```
+
+    ## 
+    ## 
+    ##     R2   adjusted_R2   df
+    ## ------  ------------  ---
+    ##  0.083         0.028   66
+    ## 
+    ## 
+    ## term                   b  95% CI               SE        t  p    
+    ## ---------------  -------  ---------------  ------  -------  -----
+    ## (Intercept)       -0.385  -2.600, 1.829     1.109   -0.347  .729 
+    ## similar           -3.425  -6.462, -0.389    1.521   -2.252  .028 
+    ## maas               0.434  -1.646, 2.514     1.042    0.416  .679 
+    ## condcompassion     0.877  -2.290, 4.044     1.586    0.553  .582 
+    ## similar:maas       0.920  -3.071, 4.912     1.999    0.460  .647
+
+``` r
+lm.beta(test)
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = factual_accuracy ~ similar * maas + cond, data = df)
+    ## 
+    ## Standardized Coefficients::
+    ##    (Intercept)        similar           maas condcompassion   similar:maas 
+    ##     0.00000000    -0.27163373     0.04999156     0.06620148     0.05500056
+
+``` r
+test <-lm(EA_corr ~ similar*maas+cond,df)
+make_table(test)
+```
+
+    ## 
+    ## 
+    ##     R2   adjusted_R2   df
+    ## ------  ------------  ---
+    ##  0.221         0.175   67
+    ## 
+    ## 
+    ## term                   b  95% CI               SE        t  p    
+    ## ---------------  -------  ---------------  ------  -------  -----
+    ## (Intercept)       -0.067  -0.133, -0.001    0.033   -2.027  .047 
+    ## similar           -0.110  -0.200, -0.021    0.045   -2.462  .016 
+    ## maas               0.064  0.002, 0.126      0.031    2.076  .042 
+    ## condcompassion     0.118  0.025, 0.211      0.047    2.526  .014 
+    ## similar:maas      -0.130  -0.248, -0.011    0.059   -2.186  .032
+
+``` r
+lm.beta(test)
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = EA_corr ~ similar * maas + cond, data = df)
+    ## 
+    ## Standardized Coefficients::
+    ##    (Intercept)        similar           maas condcompassion   similar:maas 
+    ##      0.0000000     -0.2708243      0.2277464      0.2761104     -0.2388960
+
+``` r
+#extra analysis
+dfw <- read.csv('../data/data_windowed.csv')
+dfw$rAvg = fisherz(dfw$rAvg)
+
+dfw = dfw %>%
+  group_by(pID) %>% 
+  dplyr::mutate(rAvg_mean= mean(rAvg, na.rm = TRUE),
+                val_mean=mean(val, na.rm = TRUE), 
+                inten_mean=mean(inten, na.rm = TRUE))
+
+#within-person mean center 
+dfw$rAvg = dfw$rAvg - dfw$rAvg_mean 
+dfw$val = dfw$val - dfw$val_mean 
+dfw$inten = dfw$inten - dfw$inten_mean 
+ #grand mean center
+dfw$maas = dfw$maas - mean(dfw$maas,na.rm=T)
+dfw$similar_combined = dfw$similar_combined- mean(dfw$similar_combined,na.rm=T)
+dfw$similar_combined <- as.factor(dfw$similar_combined)  
+
+#speaker's intensity and valence predicting empathic accuracy
+summary(lmer(rAvg ~ val * inten + (1|pID) + (1|T), dfw))
+```
+
+    ## Linear mixed model fit by REML. t-tests use Satterthwaite's method [
+    ## lmerModLmerTest]
+    ## Formula: rAvg ~ val * inten + (1 | pID) + (1 | T)
+    ##    Data: dfw
+    ## 
+    ## REML criterion at convergence: 2013.7
+    ## 
+    ## Scaled residuals: 
+    ##     Min      1Q  Median      3Q     Max 
+    ## -3.7444 -0.5659  0.0098  0.6540  4.9164 
+    ## 
+    ## Random effects:
+    ##  Groups   Name        Variance                               
+    ##  pID      (Intercept) 0.0000000000000000000000000000000005526
+    ##  T        (Intercept) 0.1985152174570321004232198447425616905
+    ##  Residual             0.4228171137699998638481702073477208614
+    ##  Std.Dev.              
+    ##  0.00000000000000002351
+    ##  0.44555046566806782993
+    ##  0.65024388791437315316
+    ## Number of obs: 990, groups:  pID, 72; T, 14
+    ## 
+    ## Fixed effects:
+    ##             Estimate Std. Error       df t value Pr(>|t|)
+    ## (Intercept) -0.01780    0.12363 11.98722  -0.144    0.888
+    ## val          0.07485    0.12493 11.98840   0.599    0.560
+    ## inten       -0.09857    0.08753 11.99063  -1.126    0.282
+    ## val:inten   -0.04644    0.08517 11.99214  -0.545    0.596
+    ## 
+    ## Correlation of Fixed Effects:
+    ##           (Intr) val    inten 
+    ## val       -0.001              
+    ## inten      0.055  0.203       
+    ## val:inten  0.211 -0.004  0.261
+    ## optimizer (nloptwrap) convergence code: 0 (OK)
+    ## boundary (singular) fit: see ?isSingular
+
+``` r
+#interaction with maas
+summary(lmer(rAvg ~ val + inten + val*maas + inten*maas + (1|pID) + (1|T), dfw))
+```
+
+    ## Linear mixed model fit by REML. t-tests use Satterthwaite's method [
+    ## lmerModLmerTest]
+    ## Formula: rAvg ~ val + inten + val * maas + inten * maas + (1 | pID) +  
+    ##     (1 | T)
+    ##    Data: dfw
+    ## 
+    ## REML criterion at convergence: 2024.9
+    ## 
+    ## Scaled residuals: 
+    ##     Min      1Q  Median      3Q     Max 
+    ## -3.7552 -0.5673  0.0002  0.6443  4.9141 
+    ## 
+    ## Random effects:
+    ##  Groups   Name        Variance                               
+    ##  pID      (Intercept) 0.0000000000000000000000000000000005523
+    ##  T        (Intercept) 0.1984124077206912972748398260591784492
+    ##  Residual             0.4225981395445277954969753864133963361
+    ##  Std.Dev.             
+    ##  0.0000000000000000235
+    ##  0.4454350768862857524
+    ##  0.6500754875739646055
+    ## Number of obs: 990, groups:  pID, 72; T, 14
+    ## 
+    ## Fixed effects:
+    ##                Estimate  Std. Error          df t value Pr(>|t|)
+    ## (Intercept)  -0.0036934   0.1208278  11.9570747  -0.031    0.976
+    ## val           0.0748392   0.1248946  11.9608890   0.599    0.560
+    ## inten        -0.0863249   0.0844704  11.9660384  -1.022    0.327
+    ## maas          0.0008655   0.0273008 972.6782363   0.032    0.975
+    ## val:maas      0.0362259   0.0282538 972.6744551   1.282    0.200
+    ## inten:maas   -0.0148026   0.0191449 972.6790439  -0.773    0.440
+    ## 
+    ## Correlation of Fixed Effects:
+    ##            (Intr) val    inten  maas   val:ms
+    ## val         0.000                            
+    ## inten       0.000  0.211                     
+    ## maas        0.001  0.000  0.001              
+    ## val:maas    0.000  0.000 -0.002  0.004       
+    ## inten:maas  0.001 -0.002  0.000  0.008  0.218
+    ## optimizer (nloptwrap) convergence code: 0 (OK)
+    ## boundary (singular) fit: see ?isSingular
+
+``` r
+summary(lmer(rAvg ~ val + inten + val*similar_combined + inten*similar_combined+ (1|pID) + (1|T), dfw))
+```
+
+    ## Linear mixed model fit by REML. t-tests use Satterthwaite's method [
+    ## lmerModLmerTest]
+    ## Formula: 
+    ## rAvg ~ val + inten + val * similar_combined + inten * similar_combined +  
+    ##     (1 | pID) + (1 | T)
+    ##    Data: dfw
+    ## 
+    ## REML criterion at convergence: 2023.7
+    ## 
+    ## Scaled residuals: 
+    ##     Min      1Q  Median      3Q     Max 
+    ## -3.8138 -0.5630  0.0060  0.6484  4.9380 
+    ## 
+    ## Random effects:
+    ##  Groups   Name        Variance                               
+    ##  pID      (Intercept) 0.0000000000000000000000000000000005531
+    ##  T        (Intercept) 0.1986853042177876282892157178139314055
+    ##  Residual             0.4231793811779818170748512784484773874
+    ##  Std.Dev.              
+    ##  0.00000000000000002352
+    ##  0.44574129741116386150
+    ##  0.65052239098895114910
+    ## Number of obs: 990, groups:  pID, 72; T, 14
+    ## 
+    ## Fixed effects:
+    ##                                           Estimate Std. Error         df
+    ## (Intercept)                              -0.002126   0.122222  12.469901
+    ## val                                       0.056358   0.126331  12.471901
+    ## inten                                    -0.096939   0.085449  12.481361
+    ## similar_combined0.569444444444444        -0.003392   0.041800 972.676547
+    ## val:similar_combined0.569444444444444     0.043273   0.043350 972.673199
+    ## inten:similar_combined0.569444444444444   0.025764   0.029424 972.676354
+    ##                                         t value Pr(>|t|)
+    ## (Intercept)                              -0.017    0.986
+    ## val                                       0.446    0.663
+    ## inten                                    -1.134    0.278
+    ## similar_combined0.569444444444444        -0.081    0.935
+    ## val:similar_combined0.569444444444444     0.998    0.318
+    ## inten:similar_combined0.569444444444444   0.876    0.381
+    ## 
+    ## Correlation of Fixed Effects:
+    ##             (Intr) val    inten  s_0.56 v:_0.5
+    ## val          0.000                            
+    ## inten        0.000  0.211                     
+    ## s_0.5694444 -0.146  0.001  0.000              
+    ## v:_0.569444  0.001 -0.146 -0.031 -0.006       
+    ## i:_0.569444  0.000 -0.031 -0.146  0.003  0.222
+    ## optimizer (nloptwrap) convergence code: 0 (OK)
+    ## boundary (singular) fit: see ?isSingular

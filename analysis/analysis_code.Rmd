@@ -36,6 +36,9 @@ library(dplyr)
 library(tidyr)
 library(interactions)
 library(ggsci)
+library(psych)
+library(devtools)
+
 ```
 
 # load and inspect data
@@ -43,21 +46,25 @@ library(ggsci)
 df <- read.csv('../data/data.csv')
 
 df$cond <- relevel(df$cond, ref='control')
-colnames(df)[colnames(df)=="Q56"] <- "edu"
 
-table(scale(df$EA_corr)) #2 outliers
-table(scale(df$factual_accuracy)) #no outlier
-table(scale(df$speaker_similar_exp))#no outlier, only one person for answer 3
-df<- mutate(df, similar_combined= case_when(
+
+#calculate MAAS mean scores and inspect
+df$maas <- rowMeans(df[,c("maas1", "maas2", "maas3", "maas4", "maas5", "maas6", "maas7", "maas8", "maas9", "maas10", "maas11", "maas12", "maas13", "maas14", "maas15")])
+hist(df$maas)
+
+#inspect data and outliers
+table(scale(df$EA_corr)) 
+table(scale(df$factual_accuracy)) 
+table(scale(df$maas))
+table(df$speaker_similar_exp)# only one person for answer 3
+df<- dplyr::mutate(df, similar_combined= case_when(
   speaker_similar_exp == 1  ~ 0, 
   speaker_similar_exp == 2  ~ 1, 
   speaker_similar_exp == 3  ~ 1
 ))  
-df$similar_combined_nur <- df$similar_combined 
-df$similar_combined <- as.factor(df$similar_combined)
-table(scale(df$maas))#no outlier
 
-df2 <- subset(df, EA_corr > .5) #excluding two outliers
+
+
 
 ```
 
@@ -76,12 +83,37 @@ df_maas <- df[ , c("maas1", "maas2", "maas3", "maas4", "maas5", "maas6", "maas7"
 alpha(df_maas)
 ```
 
+# transform variables 
+```{r}
 
+#Fisher's r to z transformation
+psych::describe(df$EA_corr)
+# skew  kurtosis  se
+#-0.87  1.03      0.01
+df$EA_corr_raw =df$EA_corr
+df$EA_corr = fisherz(df$EA_corr)
+
+psych::describe(df$EA_corr)
+#skew   kurtosis  se
+#0.17   0.34      0.03
+
+#mean-center variables
+df$maas = df$maas - mean(df$maas,na.rm=T)
+df$EA_corr = df$EA_corr - mean(df$EA_corr,na.rm=T)
+
+df$similar_combined_num = df$similar_combined- mean(df$similar_combined,na.rm=T)
+df$similar_combined <- as.factor(df$similar_combined_num)  
+df$factual_accuracy = df$factual_accuracy - mean(df$factual_accuracy,na.rm=T)
+
+
+
+```
 # define function to make results table
 ```{r}
 make_table = function(model) {
   require(broom)
   require(knitr)
+  require(lm.beta)
   
   print(data.frame(R2 = summary(model)$r.squared,
              adjusted_R2 = summary(model)$adj.r.squared,
@@ -104,73 +136,58 @@ make_table = function(model) {
 ```
 
 # Results
-# past experience --> factual accuracy
-```{r}
-test <- lm(factual_accuracy ~similar_combined+cond,df)
-make_table(test)
-```
-# past experience --> empathic accuracy
-```{r}
-test <-lm(EA_corr ~similar_combined+cond,df)
-make_table(test)
-```
 
-# excluding outliers
-```{r}
-test <-lm(EA_corr ~similar_combined+cond,df2)
-make_table(test)
-```
+
 # mindfulness * experience similarity --> factual accuracy
 ```{r}
-test <-lm(factual_accuracy ~maas*similar_combined+cond,df)
+test <-lm(factual_accuracy ~similar_combined*maas+cond,df)
 make_table(test)
+lm.beta(test)
 ```
 
 # mindfulness * experience similarity --> empathic accuracy
 ```{r}
-test <-lm(EA_corr ~ maas*similar_combined +cond,df)
+test <-lm(EA_corr ~ similar_combined*maas +cond,df)
 make_table(test)
-#excluding outliers
-test <-lm(EA_corr ~ maas*similar_combined +cond,df2)
-make_table(test)
+lm.beta(test)
+
 ```
 
 # simple slopes analysis
 ```{r}
-print(mass_low<- round((mean(df$maas) - sd(df$maas)),1))
-print(mass_mid<- round((mean(df$maas)),1))
-print(mass_high <- round((mean(df$maas) + sd(df$maas)),1))
 
-#center variables
-df$maas_cen = df$maas - mean(df$maas,na.rm=T)
-df$exp_cen = df$similar_combined_nur- mean(df$similar_combined_nur,na.rm=T)
-df$exp_cen <- as.factor(df$exp_cen)  
-df$EA_corr_cen = df$EA_corr - mean(df$EA_corr,na.rm=T)
 
 #+-sd for mindfulness
-df$maas_low <- df$maas_cen + sd(df$maas_cen, na.rm=T)
-df$maas_high <- df$maas_cen - sd(df$maas_cen, na.rm=T)
+df$maas_low <- df$maas + sd(df$maas, na.rm=T)
+df$maas_high <- df$maas - sd(df$maas, na.rm=T)
 
-test <- lm(EA_corr_cen~ exp_cen*maas_high+as.factor(cond), df)
+test <- lm(EA_corr~ similar_combined*maas_high+as.factor(cond), df)
 make_table(test)
-test <- lm(EA_corr_cen ~ exp_cen*maas_cen +as.factor(cond), df)
+lm.beta(test)
+
+test <- lm(EA_corr ~ similar_combined*maas +as.factor(cond), df)
 make_table(test)
-test <- lm(EA_corr_cen ~ exp_cen*maas_low +as.factor(cond), df)
+lm.beta(test)
+
+test <- lm(EA_corr ~ similar_combined*maas_low +as.factor(cond), df)
 make_table(test)
+lm.beta(test)
 ```
 
 
 # mindfulness --> empathic accuracy among subgroups of participants with vs. without similar past experience
 ```{r}
 
-similar_no =subset(df, similar_combined==0)
-similar_yes =subset(df, similar_combined==1)
+similar_no =subset(df, speaker_similar_exp==1)
+similar_yes =subset(df, speaker_similar_exp==2 |  speaker_similar_exp == 3)
 
 test <- lm(EA_corr~ maas+as.factor(cond), similar_no)
 make_table(test)
+lm.beta(test)
+
 test <- lm(EA_corr~ maas+as.factor(cond), similar_yes)
 make_table(test)
-
+lm.beta(test)
 
 ```
 
@@ -181,8 +198,8 @@ make_table(test)
 
 
 df$Mindfulness <- df$maas
-test <- lm(EA_corr~ Mindfulness * similar_combined_nur +as.factor(cond), df)
-interact_plot(test, pred = similar_combined_nur, modx = Mindfulness,
+test <- lm(EA_corr~ Mindfulness * similar_combined_num +as.factor(cond), df)
+interact_plot(test, pred = similar_combined_num, modx = Mindfulness,
               x.label = "Experience similarity", y.label = "Empathic accuracy", interval=T, int_type="confidence") 
 
 
@@ -202,9 +219,65 @@ ggplot(df3) +
   theme_bw() + theme(panel.grid.minor = element_blank())+  
   theme(panel.grid.major = element_blank()) +  
   xlab("mindfulness")  + ylab("empathic accuracy") +
-  xlim (2,6)+
   scale_color_jama()
+
 
 
 ```
 
+
+```{r}
+#SI2. Results using non-Fisher r to z transformed empathic accuracy scores
+
+test <-lm(EA_corr_raw ~ similar_combined*maas+cond,df)
+make_table(test)
+lm.beta(test)
+
+```
+
+```{r}
+#SI3. Treating the experience similarity as a continuous variable. 
+
+df$similar = df$speaker_similar_exp- mean(df$speaker_similar_exp,na.rm=T)
+
+test <-lm(factual_accuracy ~similar*maas+cond,df)
+make_table(test)
+lm.beta(test)
+
+test <-lm(EA_corr ~ similar*maas+cond,df)
+make_table(test)
+lm.beta(test)
+
+```
+
+
+```{r}
+
+#extra analysis
+dfw <- read.csv('../data/data_windowed.csv')
+dfw$rAvg = fisherz(dfw$rAvg)
+
+dfw = dfw %>%
+  group_by(pID) %>% 
+  dplyr::mutate(rAvg_mean= mean(rAvg, na.rm = TRUE),
+                val_mean=mean(val, na.rm = TRUE), 
+                inten_mean=mean(inten, na.rm = TRUE))
+
+#within-person mean center 
+dfw$rAvg = dfw$rAvg - dfw$rAvg_mean 
+dfw$val = dfw$val - dfw$val_mean 
+dfw$inten = dfw$inten - dfw$inten_mean 
+ #grand mean center
+dfw$maas = dfw$maas - mean(dfw$maas,na.rm=T)
+dfw$similar_combined = dfw$similar_combined- mean(dfw$similar_combined,na.rm=T)
+dfw$similar_combined <- as.factor(dfw$similar_combined)  
+
+#speaker's intensity and valence predicting empathic accuracy
+summary(lmer(rAvg ~ val * inten + (1|pID) + (1|T), dfw))
+
+#interaction with maas
+summary(lmer(rAvg ~ val + inten + val*maas + inten*maas + (1|pID) + (1|T), dfw))
+
+summary(lmer(rAvg ~ val + inten + val*similar_combined + inten*similar_combined+ (1|pID) + (1|T), dfw))
+
+```
