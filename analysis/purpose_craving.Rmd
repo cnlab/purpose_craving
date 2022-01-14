@@ -3,9 +3,6 @@ title: "Purpose Craving Manuscript Analyses"
 author: "Yoona Kang"
 date: "`r Sys.Date()`"
 output:
-  github_document:
-    toc: true
-    toc_depth: 2
   html_document:
     code_folding: show
     df_print: paged
@@ -15,6 +12,15 @@ output:
     toc_float:
       collapsed: yes
       smooth_scroll: yes
+  github_document:
+    toc: yes
+    toc_depth: 2
+  pdf_document:
+    toc: yes
+    toc_depth: '2'
+  word_document:
+    toc: yes
+    toc_depth: '2'
 ---
 
 ```{r setup, include=FALSE}
@@ -47,9 +53,7 @@ df_long <- read.csv("./df_long.csv")
 
 
 df_long$condition <- relevel(df_long$condition, ref='control')
-df_ema=subset(df_wide, did_ema==1)
-df_ema_scan=subset(df_wide, did_ema==1&did_scan==1)
-length(unique(df_ema_scan$pID)) #54=number of participants who did both fmri and ema
+length(unique(df_wide$pID)) #54=number of participants who did both fmri and ema
 
 #define a function to get standardized beta from lmer
 lmer.beta <- function(object) {
@@ -71,30 +75,31 @@ lmer.beta <- function(object) {
 # METHODS
 ## demographics
 ```{r}
-summary(df_ema_scan$age)
-sd(df_ema_scan$age)
-table(df_ema_scan$gender)
-table(df_ema_scan$race_numeric)
-summary(df_ema_scan$race_numeric) #no NAs
+summary(df_wide$age)
+sd(df_wide$age)
+table(df_wide$gender)
+table(df_wide$race_numeric)
+summary(df_wide$race_numeric) #no NAs
 ```
 
 # RESULTS
+
 ## Alcohol Use Descriptives
 
-### had alcohol
+### Frequency of alcohol use
 ```{r}
-table(df_ema_scan$hadalcohol_total) #out of 54, 11 never had alcohol
+table(df_wide$hadalcohol_total) #out of 54, 11 never had alcohol
 (54-11)/54*100 # total percentage who reported having alcohol at least once
-by(df_ema_scan$hadalcohol_total, df_ema_scan$gender, table) #0 drinks for 5F 6M 
-table(df_ema_scan$gender) #37F 16M (exclude 1 other for percentage calculation to be consistent with previous report)
+by(df_wide$hadalcohol_total, df_wide$gender, table) #0 drinks for 5F 6M 
+table(df_wide$gender) #37F 16M (exclude 1 Other for percentage comparison to be consistent with previous report)
 (16-6)/16*100 #men percentage had alcohol
 (37-5)/37*100 #women percentage had alcohol
 ```
-
-### Of the ones who reported having drank alcohol at least once
+### Average daily alcohol use
 ```{r}
-drank_wide = subset(df_wide, drinks_total>0 & did_scan==1)
-drank_long=subset(df_long, drinks_total>0 & did_scan==1)
+### Of the ones who reported having drank alcohol at least once
+drank_wide = subset(df_wide, drinks_total>0 )
+drank_long=subset(df_long, drinks_total>0 )
 length(unique(drank_long$pID))
 
 summary(drank_wide$drinks_mean) #the average daily amount of consumption
@@ -107,9 +112,9 @@ sd(drank_wide$drinks_weekly, na.rm=T)
 table(drank_wide$drinks_weekly)
 ```
 
-# Multilevel linear model with standardized variables 
-## Standardize variables
+# Daily Purpose, Neural Alcohol Cue Reactivity, and Alcohol Craving Predicting Subsequent Alcohol Consumption
 
+## Standardize variables
 ```{r}
 df_long$purpose_dailyz <- with(df_long, ave(purpose_daily, pID, FUN=stdz))
 df_long$purpose_daily_previousz <- with(df_long, ave(purpose_daily_previous, pID, FUN=stdz))
@@ -128,7 +133,7 @@ lme.dscore(test,df_long,type="lme4")
 
 # Follow-up simple slopes analyses 
 
-## Within-person mean-center variables
+## Within-person mean-center variables following Aiken et al., 1991
 ```{r}
 df_long$purpose_cen =df_long$purpose_daily_previous - df_long$purpose_mean
 df_long$craving_cen =df_long$craving_previous - df_long$craving_mean
@@ -149,9 +154,9 @@ df_long$vs_high <- df_long$vs_cen - sd(df_long$vs_cen, na.rm=T)
 ```
 
 # simple slopes analysis
+```{r}
 ## (SI6) see stats for vs_cen for purpose*vs two way interaction (reported stats at purpose_low and purpose_high in text) 
 ## see stats for vs_cen:craving_cen for purpose*vs*craving three-way interaction
-```{r}
 test <-lmer(drinks_cen ~ 0 + purpose_low*vs_cen*craving_cen + (0+purpose_low|groupID/pID) + (0+craving_cen|groupID/pID)+age_cen+as.factor(gender)+as.factor(race_numeric)+rung_group_cen+as.factor(condition),df_long)
 summ(test, digits = 3, confint = TRUE)
 summary(test)
@@ -212,19 +217,21 @@ interact_plot(test, pred = craving_cen,  modx=vs_cen, mod2=purpose_cen,interval 
 ```
 
 # Discussion
-# Although the average levels of daily purpose throughout the EMA period were not significantly associated with the neural reactivity within the ventral striatum in our dat
+
 ```{r}
+# the average levels of daily purpose throughout the EMA period were not significantly associated with the neural reactivity within the ventral striatum 
 cor.test(df_wide$vs_alc_react, df_wide$purpose_mean)
 #cor.test(df_wide$vs_alc_react, df_wide$drinks_total)
 ```
 
 # Supplementary information (SI)
+
 ## SI1.  Race/ethnicity composition of the study samples
 
 ```{r}
-summary(df_ema_scan$race) 
+summary(df_wide$race) 
 # Demographic variables were not associated with any of the main study variables (ps>.10), with an exception that men compared to women showed greater reactivity within the ventral striatum 
-v1=df_ema_scan %>%
+v1=df_wide %>%
   dplyr::select(gender_numeric, age, race_numeric, rung_group, purpose_mean, vs_alc_react, drinks_mean)
 
 
@@ -234,7 +241,7 @@ corrplot(M$r, p.mat = M$P, insig = "label_sig",
          sig.level = c(.001, .05, .10), pch.cex=0.5, pch.col = "white",
          method="color", type="lower")
 #gender is associated with vs (male with higher vs cue reactivity)
-cor.test(df_ema_scan$gender_numeric, df_ema_scan$vs_alc_react)
+cor.test(df_wide$gender_numeric, df_wide$vs_alc_react)
 
 
 ```
