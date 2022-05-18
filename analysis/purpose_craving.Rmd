@@ -119,8 +119,7 @@ sd(df_wide$rung_group, na.rm=T)
 
 # RESULTS
 
-## Descriptives
-
+## Alcohol Use, Purpose in Life, and Cue Reactivity Descriptives
 ### Alcohol Descriptives
 ```{r}
 
@@ -153,6 +152,7 @@ summary(drank$drinks_meanWN)
 sd(drank$drinks_meanWN)
 
 ```
+
 ### Purpose within-person variability 
 ```{r}
 
@@ -164,13 +164,31 @@ cv=df_long %>%
   dplyr::select(pID, purpose_within_cv) %>%
   unique()
 
-#remove two subjects who reported only 1 and 2 times and so have zero variability from mean calculation
+#remove two subjects who reported 1 and 2 purpose ratings and were excluded from standardizing
 cv=subset(cv, purpose_within_cv !=0)
 summary(cv$purpose_within_cv)
+sd(cv$purpose_within_cv, na.rm=T)
 
+#ICC
 
+#unconditional means model
+model_fit <- lmer(formula = purpose_daily ~ 1 + (1|pID), 
+              data=df_long,
+              na.action=na.exclude)
+summary(model_fit)
+VarCorr(model_fit)
+
+RandomEffects <- as.data.frame(VarCorr(model_fit))
+ICC_between <- RandomEffects[1,4]/(RandomEffects[1,4]+RandomEffects[2,4]) 
+ICC_between
+
+#62.92% is attributable to between-person variance
+#37.08% attributable to within-person variance
 ```
-### VS activity from rest [doublecheck]
+
+
+
+### VS activity from rest 
 
 ```{r}
 summary(df_wide$vs_alc_react)
@@ -200,10 +218,11 @@ df_long$drinksz <- with(df_long, ave(drinks, pID, FUN=stdz))
 # craving * purpose * VS --> drinking
 ```{r}
 test <- lmer(drinksz ~ 0 + craving_previousz * purpose_daily_previousz * vs_alc_react +
-              (0 + craving_previousz | site / groupID / pID) +
-              (0 + purpose_daily_previousz | site / groupID / pID) +
+              (0 + craving_previousz | pID) +
               age + as.factor(gender) + as.factor(race_numeric) + rung_group + as.factor(condition),
             df_long)
+
+#lme4::allFit(test)  
 summ(test, digits = 3, confint = TRUE)
 summary(test)
 lmer.beta(test)
@@ -238,27 +257,29 @@ df_long$vs_high <- df_long$vs_cen - sd(df_long$vs_cen, na.rm=T)
 ```{r}
 ## (SI7) see stats for vs_cen for purpose*vs two way interaction (reported stats at purpose_low and purpose_high in text) 
 ## see stats for vs_cen:craving_cen for purpose*vs*craving three-way interaction
+
 test <- lmer(drinks_cen ~ 0 + purpose_low * vs_cen * craving_cen +
-               (0 + purpose_low | site / groupID / pID) + 
-               (0 + craving_cen | site / groupID / pID) + 
+               (0 + craving_cen | pID) + 
                age_cen+as.factor(gender) + as.factor(race_numeric) + rung_group_cen + as.factor(condition),
-             df_long, control = lmerControl(optimizer="bobyqa"))
+             df_long)
+
 summ(test, digits = 3, confint = TRUE)
 summary(test)
 
-test <- lmer(drinks_cen ~ 0 + purpose_cen * vs_cen * craving_cen + 
-               (0 + purpose_cen | site / groupID / pID) + 
-               (0 + craving_cen | site / groupID /  pID) + 
-               age_cen + as.factor(gender) + as.factor(race_numeric) + rung_group_cen + as.factor(condition),
-             df_long, control = lmerControl(optimizer="bobyqa"))
+test <- lmer(drinks_cen ~ 0 + purpose_cen * vs_cen * craving_cen +
+               (0 + craving_cen | pID) + 
+               age_cen+as.factor(gender) + as.factor(race_numeric) + rung_group_cen + as.factor(condition),
+             df_long)
+
+
 summ(test, digits = 3, confint = TRUE)
 summary(test)
 
-test <- lmer(drinks_cen ~ 0 + purpose_high * vs_cen * craving_cen + 
-               (0 + purpose_high | site / groupID / pID) + 
-               (0 + craving_cen | site / groupID / pID) +
-               age_cen + as.factor(gender) + as.factor(race_numeric) + rung_group_cen + as.factor(condition),
-             df_long, control = lmerControl(optimizer="bobyqa"))
+test <- lmer(drinks_cen ~ 0 + purpose_high * vs_cen * craving_cen +
+               (0 + craving_cen | pID) + 
+               age_cen+as.factor(gender) + as.factor(race_numeric) + rung_group_cen + as.factor(condition),
+             df_long)
+
 summ(test, digits = 3, confint = TRUE)
 summary(test)
 
@@ -268,10 +289,10 @@ summary(test)
 # Table 2
 ```{r}
 test <- lmer(drinksz ~ 0 + craving_previousz * purpose_daily_previousz * vs_alc_react +
-               (0 + craving_previousz | site / groupID / pID) +
-               (0 + purpose_daily_previousz | site / groupID / pID)+
-               age + as.factor(gender) + as.factor(race_numeric) + rung_group + as.factor(condition),
-             df_long)
+              (0 + craving_previousz | pID) +
+              age + as.factor(gender) + as.factor(race_numeric) + rung_group + as.factor(condition),
+            df_long)
+
 summ(test, digits = 3, confint = TRUE)
 summary(test)
 lmer.beta(test)
@@ -282,11 +303,10 @@ lme.dscore(test, df_long,type="lme4")
 # Figure1
 ```{r}
 
-test <- lmer(drinks_cen ~ 0 + purpose_cen * vs_cen * craving_cen + 
-               (0 + purpose_cen | site / groupID / pID) +
-               (0 + craving_cen | site / groupID / pID) +
+test <- lmer(drinks_cen ~ 0 + purpose_cen * vs_cen * craving_cen +
+               (0 + craving_cen | pID) +
                age_cen + gender + race_numeric + rung_group_cen + condition,
-             df_long, control = lmerControl(optimizer="bobyqa"))
+             df_long)
 
 interact_plot(test, pred = craving_cen, modx=vs_cen, mod2=purpose_cen,interval = TRUE,
               x.label = "craving", y.label = "drinking",
@@ -318,7 +338,10 @@ corrplot(M$r, p.mat = M$P, insig = "label_sig",
          method="color", type="lower")
 
 summary(aov(purpose_mean ~ gender, df_wide))
-summary(aov(vs_alc_react ~ gender, df_wide)) #sig
+test <- aov(vs_alc_react ~ gender, df_wide) #sig
+summary(test)
+TukeyHSD(test, conf.level=.95)
+
 summary(aov(drinks_mean ~ gender, df_wide))
 
 summary(aov(purpose_mean ~ race_numeric, df_wide))
@@ -332,15 +355,20 @@ summary(men$vs_alc_react)
 summary(women$vs_alc_react)
 
 ```
-##SI3. Ecological momentary assessment (EMA) data collection and transformation [doublecheck]
+##SI3. Ecological momentary assessment (EMA) data collection and transformation
 
 ```{r}
 
 #missing data
 length(unique(df_wide$vs_alc_react)) # 54 out of 54; none missing
-summary(df_long$craving_previousz) #616
-summary(df_long$purpose_daily_previousz) #495
-summary(df_long$drinksz) #1042
+#possible total number of prompts
+54*28 #1512 for purpose (54 subjects * 28 days * 1 prompt per day)
+54*28*2 #3024 for craving and drinks  (54 subjects * 28 days * 2 prompts per day)
+
+summary(df_long$craving_previousz) #616 out of 3024
+summary(df_long$purpose_daily_previousz) #495 out of 1512
+summary(df_long$drinksz) #1042 out of 3024
+
 
 ```
 
@@ -350,10 +378,11 @@ summary(df_long$drinksz) #1042
 t.test(df_wide$neurosynth_craving_alc_react)
 
 test <- lmer(drinksz ~ 0 + craving_previousz * purpose_daily_previousz * neurosynth_craving_alc_react +
-               (0 + craving_previousz | site / groupID / pID) +
-               (0 + purpose_daily_previousz | site / groupID / pID) + 
-               age + as.factor(gender) + as.factor(race_numeric) + rung_group + as.factor(condition),
-             df_long)
+              (0 + craving_previousz | pID) +
+              age + as.factor(gender) + as.factor(race_numeric) + rung_group + as.factor(condition),
+            df_long)
+
+
 summ(test, digits = 3, confint = TRUE)
 summary(test)
 lmer.beta(test)
@@ -363,25 +392,24 @@ lme.dscore(test, df_long,type = "lme4")
 #followup simple slopes analyses
 df_long$neurosynth_craving_alc_react_cen = df_long$neurosynth_craving_alc_react - mean(df_long$neurosynth_craving_alc_react, na.rm=T)
 
+
+
 test <- lmer(drinks_cen ~ 0 + purpose_low * neurosynth_craving_alc_react_cen * craving_cen +
-               (0 + purpose_low | site / groupID / pID) +
-               (0 + craving_cen | site / groupID / pID) +
+               (0 + craving_cen | pID) +
                age_cen + as.factor(gender) + as.factor(race_numeric) + rung_group_cen + as.factor(condition),
              df_long, control = lmerControl(optimizer="bobyqa"))
 summ(test, digits = 3, confint = TRUE)
 summary(test)
 
 test <-lmer(drinks_cen ~ 0 + purpose_cen * neurosynth_craving_alc_react_cen * craving_cen  +
-              (0 + purpose_low | site / groupID / pID) +
-              (0 + craving_cen | groupID / pID) + 
+              (0 + craving_cen | pID) + 
               age_cen + as.factor(gender) + as.factor(race_numeric) + rung_group_cen + as.factor(condition),
             df_long, control = lmerControl(optimizer="bobyqa"))
 summ(test, digits = 3, confint = TRUE)
 summary(test)
 
 test <- lmer(drinks_cen ~ 0 + purpose_high * neurosynth_craving_alc_react_cen * craving_cen +
-               (0 + purpose_low | site / groupID / pID) +
-               (0 + craving_cen | site / groupID / pID) +
+               (0 + craving_cen | pID) +
                age_cen + as.factor(gender) + as.factor(race_numeric) + rung_group_cen + as.factor(condition), 
              df_long, control = lmerControl(optimizer = "bobyqa"))
 summ(test, digits = 3, confint = TRUE)
@@ -391,10 +419,9 @@ summary(test)
 ## Figure SI.
 ```{r}
 test <- lmer(drinks_cen ~ 0 + purpose_cen * neurosynth_craving_alc_react_cen * craving_cen +
-               (0 + purpose_cen | site / groupID / pID) +
-               (0 + craving_cen | site / groupID / pID) + 
+               (0 + craving_cen | pID) + 
                age_cen + gender + race_numeric + rung_group_cen + condition,
-             df_long, control = lmerControl(optimizer = "bobyqa"))
+             df_long)
 
 interact_plot(test, pred = craving_cen, modx = neurosynth_craving_alc_react_cen, mod2 = purpose_cen, 
               interval = TRUE,
@@ -406,32 +433,38 @@ interact_plot(test, pred = craving_cen, modx = neurosynth_craving_alc_react_cen,
 
 ## SI5. Multilevel regression model fit and test of multicollinearity
 
-### AIC
-
 ```{r}
 
-AIC(lmer(drinksz ~ 0 + craving_previousz * purpose_daily_previousz * vs_alc_react +
-              (0 + craving_previousz | site / groupID / pID) +
-              (0 + purpose_daily_previousz | site / groupID / pID) +
-              age + as.factor(gender) + as.factor(race_numeric) + rung_group + as.factor(condition),
-            df_long))
+df_compare = df_long %>%
+  dplyr::select(pID, drinksz, craving_previousz, purpose_daily_previousz, vs_alc_react, age, gender, race_numeric, rung_group, condition) %>%
+  na.omit()
 
-AIC(lmer(drinksz ~ 0 + craving_previousz *  vs_alc_react +
-              (0 + craving_previousz | site / groupID / pID) +
-              age + as.factor(gender) + as.factor(race_numeric) + rung_group + as.factor(condition),
-            df_long))
 
-AIC(lmer(drinksz ~ 0 + purpose_daily_previousz * vs_alc_react +
-              (0 + purpose_daily_previousz | site / groupID / pID) +
+mod1 = lmer(drinksz ~ 0 + craving_previousz * purpose_daily_previousz * vs_alc_react +
+              (0 + craving_previousz | pID) +
               age + as.factor(gender) + as.factor(race_numeric) + rung_group + as.factor(condition),
-            df_long))
+            df_compare)
 
-AIC(lmer(drinksz ~ 0 + craving_previousz * purpose_daily_previousz +
-              (0 + craving_previousz | site / groupID / pID) +
-              (0 + purpose_daily_previousz | site / groupID / pID) +
+mod2 = lmer(drinksz ~ 0 + craving_previousz *  vs_alc_react +
+              (0 + craving_previousz | pID) +
               age + as.factor(gender) + as.factor(race_numeric) + rung_group + as.factor(condition),
-            df_long))
+            df_compare)
 
+mod3 = lmer(drinksz ~ 0 + purpose_daily_previousz * vs_alc_react +
+              (0 + purpose_daily_previousz | pID) +
+              age + as.factor(gender) + as.factor(race_numeric) + rung_group + as.factor(condition),
+            df_compare)
+
+mod4 = lmer(drinksz ~ 0 + craving_previousz * purpose_daily_previousz +
+              (0 + craving_previousz | pID) +
+              age + as.factor(gender) + as.factor(race_numeric) + rung_group + as.factor(condition),
+            df_compare)
+
+anova(mod1, mod2, mod3, mod4)
+
+#output shows that mod1 is a significantly better fit (both wrt lower AIC and the chi sq test) than mod4 
+
+```
 
 ```
 
@@ -454,35 +487,31 @@ vif.lme <- function (fit) {
   v }
 
 test <- lmer(drinksz ~ 0 + purpose_daily_previousz * vs_alc_react * craving_previousz +
-               (0 + purpose_daily_previousz | site / groupID / pID) + 
-               (0 + craving_previousz | site / groupID / pID),
+               (0 + craving_previousz |pID),
              df_long)
 
 vif <- data.frame(vif.lme(test)) #low correlations of vif=~1
 summary(vif$vif.lme.test.)
 ```
 
-### FDR correction [doublecheck]
+### FDR correction 
 ```{r}
 summary(lmer(drinks_cen ~ 0 + purpose_low * vs_cen * craving_cen +
-               (0 + purpose_low | site / groupID / pID) + 
-               (0 + craving_cen | site / groupID / pID) + 
+               (0 + craving_cen | pID) + 
                age_cen+as.factor(gender) + as.factor(race_numeric) + rung_group_cen + as.factor(condition),
-             df_long, control = lmerControl(optimizer="bobyqa")))
+             df_long))
 
 summary(lmer(drinks_cen ~ 0 + purpose_cen * vs_cen * craving_cen + 
-               (0 + purpose_cen | site / groupID / pID) + 
-               (0 + craving_cen | site / groupID /  pID) + 
+               (0 + craving_cen | pID) + 
                age_cen + as.factor(gender) + as.factor(race_numeric) + rung_group_cen + as.factor(condition),
-             df_long, control = lmerControl(optimizer="bobyqa")))
+             df_long))
 
 summary(lmer(drinks_cen ~ 0 + purpose_high * vs_cen * craving_cen + 
-               (0 + purpose_high | site / groupID / pID) + 
-               (0 + craving_cen | site / groupID / pID) +
+               (0 + craving_cen | pID) +
                age_cen + as.factor(gender) + as.factor(race_numeric) + rung_group_cen + as.factor(condition),
-             df_long, control = lmerControl(optimizer="bobyqa")))
+             df_long))
 
-p = c(0.00559,0.03210,0.22167)
+p = c(0.01503,0.07287,0.32021)
 round(p.adjust(p, "BH"), 3)
 
 ```
@@ -492,8 +521,7 @@ round(p.adjust(p, "BH"), 3)
 
 ```{r}
 test <- lmer(drinksz ~ 0 + craving_previousz * purpose_daily_previousz * vs_alc_react +
-               (0 + craving_previousz | site / groupID / pID) + 
-               (0 + purpose_daily_previousz | site / groupID / pID),
+               (0 + craving_previousz | pID) + 
              df_long)
 summ(test, digits = 3, confint = TRUE)
 summary(test)
@@ -501,22 +529,19 @@ lmer.beta(test)
 
 
 test <- lmer(drinks_cen ~ 0 + purpose_low * vs_cen * craving_cen + 
-               (0 + purpose_low | site / groupID / pID) + 
-               (0 + craving_cen | site / groupID / pID),
+               (0 + craving_cen | pID),
              df_long)
 summ(test, digits = 3, confint = TRUE)
 summary(test)
 
 test <- lmer(drinks_cen ~ 0 + purpose_cen * vs_cen * craving_cen + 
-               (0 + purpose_cen | site / groupID / pID) + 
-               (0 + craving_cen | site / groupID / pID),
+               (0 + craving_cen | pID),
              df_long,control = lmerControl(optimizer = "bobyqa"))
 summ(test, digits = 3, confint = TRUE)
 summary(test)
 
 test <- lmer(drinks_cen ~ 0 + purpose_high * vs_cen * craving_cen + 
-               (0 + purpose_high | site / groupID / pID) +
-               (0 + craving_cen | site / groupID / pID), df_long)
+               (0 + craving_cen | pID), df_long)
 summ(test, digits = 3, confint = TRUE)
 summary(test)
 
@@ -540,33 +565,31 @@ corrplot(M$r, p.mat = M$P, insig = "label_sig",
          method="color", type="lower")
 
 test <- lmer(drinksz ~ 0 + craving_previousz * purpose_daily_previousz * vs_alc_react +
-              (0 + craving_previousz | site / groupID / pID) +
-              (0 + purpose_daily_previousz | site / groupID / pID) +
-              age + as.factor(gender) + as.factor(race_numeric) + rung_group + as.factor(condition) + days_between,
+              (0 + craving_previousz | pID) +
+              age + as.factor(gender) + as.factor(race_numeric) + rung_group + as.factor(condition)+ days_between,
             df_long)
+
 summ(test, digits = 3, confint = TRUE)
 summary(test)
 
 
+
 test <- lmer(drinks_cen ~ 0 + purpose_low * vs_cen * craving_cen +
-               (0 + purpose_low | site / groupID / pID) + 
-               (0 + craving_cen | site / groupID / pID) + 
+               (0 + craving_cen | pID) + 
                age_cen+as.factor(gender) + as.factor(race_numeric) + rung_group_cen + as.factor(condition) + days_between,
              df_long, control = lmerControl(optimizer="bobyqa"))
 summ(test, digits = 3, confint = TRUE)
 summary(test)
 
 test <- lmer(drinks_cen ~ 0 + purpose_cen * vs_cen * craving_cen + 
-               (0 + purpose_cen | site / groupID / pID) + 
-               (0 + craving_cen | site / groupID /  pID) + 
+               (0 + craving_cen | pID) + 
                age_cen + as.factor(gender) + as.factor(race_numeric) + rung_group_cen + as.factor(condition) + days_between,
              df_long, control = lmerControl(optimizer="bobyqa"))
 summ(test, digits = 3, confint = TRUE)
 summary(test)
 
 test <- lmer(drinks_cen ~ 0 + purpose_high * vs_cen * craving_cen + 
-               (0 + purpose_high | site / groupID / pID) + 
-               (0 + craving_cen | site / groupID / pID) +
+               (0 + craving_cen | pID) +
                age_cen + as.factor(gender) + as.factor(race_numeric) + rung_group_cen + as.factor(condition) + days_between,
              df_long, control = lmerControl(optimizer="bobyqa"))
 summ(test, digits = 3, confint = TRUE)
@@ -574,15 +597,59 @@ summary(test)
 
 ```
 
-# R1.5. scanner craving scores
+# Additional Analysis 
+## results controlling for sites
+
+```{r}
+
+
+test <- lmer(drinksz ~ 0 + craving_previousz * purpose_daily_previousz * vs_alc_react +
+              (0 + craving_previousz | pID) +
+              age + as.factor(gender) + as.factor(race_numeric) + rung_group + as.factor(condition) + site,
+            df_long)
+
+summ(test, digits = 3, confint = TRUE)
+summary(test)
+
+
+
+test <- lmer(drinks_cen ~ 0 + purpose_low * vs_cen * craving_cen +
+               (0 + craving_cen | pID) + 
+               age_cen+as.factor(gender) + as.factor(race_numeric) + rung_group_cen + as.factor(condition) + site,
+             df_long, control = lmerControl(optimizer="bobyqa"))
+summ(test, digits = 3, confint = TRUE)
+summary(test)
+
+test <- lmer(drinks_cen ~ 0 + purpose_cen * vs_cen * craving_cen + 
+               (0 + craving_cen | pID) + 
+               age_cen + as.factor(gender) + as.factor(race_numeric) + rung_group_cen + as.factor(condition) + site,
+             df_long, control = lmerControl(optimizer="bobyqa"))
+summ(test, digits = 3, confint = TRUE)
+summary(test)
+
+test <- lmer(drinks_cen ~ 0 + purpose_high * vs_cen * craving_cen + 
+               (0 + craving_cen | pID) +
+               age_cen + as.factor(gender) + as.factor(race_numeric) + rung_group_cen + as.factor(condition) + site,
+             df_long, control = lmerControl(optimizer="bobyqa"))
+summ(test, digits = 3, confint = TRUE)
+summary(test)
+
+```
+
+## scanner craving scores [double check R1.4]
 ```{r}
 
 inscan <- read.csv( "~/Box Sync/MURI_Data_830189/data/EMA_Round1/Yoona_PurposeAnalysis/data/source/inscan_crave_deided.csv") 
-summary(inscan$alc_react_crave)
-sd(inscan$alc_react_crave)
+
 
 df2 <-merge(df_wide,inscan,by="pID", all=F)
-summary(lm(craving_mean ~ alc_react_crave + condition,df2))
+
+summary(df2$alc_react_crave)
+
+sd(inscan$alc_react_crave)
+
+
+summary(lm(craving_mean ~ alc_react_crave ,df2))
 
 
 df3=df2 %>% 
@@ -591,55 +658,18 @@ df3=df2 %>%
 df_long <-merge(df_long,df3,by="pID", all=T)
 
 
-test <- lmer(drinksz ~ 0 + alc_react_crave * purpose_daily_previousz * vs_alc_react +
-              (0 + purpose_daily_previousz | site / groupID / pID) +
+test2 <- lmer(drinksz ~ 0 + alc_react_crave * purpose_daily_previousz * vs_alc_react +
               age + as.factor(gender) + as.factor(race_numeric) + rung_group + as.factor(condition),
             df_long)
+            
 summary(test)
 
 ```
 
-
-
-#SME4.quadratic trends
-
+## condition effects on vs activity while passive viewing 
 ```{r}
-#create quadratic and cubic terms
-
-df_long$cravingSqu = df_long$craving_previousz * df_long$craving_previousz
-df_long$cravingCu = df_long$craving_previousz * df_long$craving_previousz * df_long$craving_previousz
-
-test <- lmer(drinksz ~ 0 + craving_previousz + cravingSqu +
-              (0 + craving_previousz | site / groupID / pID) +
-              (0 + cravingSqu | site / groupID / pID) +
-              age + as.factor(gender) + as.factor(race_numeric) + rung_group + as.factor(condition) + days_between,
-            df_long)
-summ(test, digits = 3, confint = TRUE)
-AIC(test)
-
-
-
-test <- lmer(drinksz ~ 0 + craving_previousz + cravingSqu +
-              (0 + craving_previousz | site / groupID / pID) +
-              (0 + cravingSqu | site / groupID / pID) +
-              age + as.factor(gender) + as.factor(race_numeric) + rung_group + as.factor(condition) + days_between,
-            df_long)
-summ(test, digits = 3, confint = TRUE)
-AIC(test)
-
-
-test <- lmer(drinksz ~ 0 + craving_previousz + cravingCu +
-              (0 + craving_previousz | site / groupID / pID) +
-              (0 + cravingCu | site / groupID / pID) +
-              age + as.factor(gender) + as.factor(race_numeric) + rung_group + as.factor(condition) + days_between,
-            df_long)
-summ(test, digits = 3, confint = TRUE)
-AIC(test)
-
-```
-
-##SIx
-```{r}
+df_wide$condition <- relevel(df_wide$condition, ref='control')
+summary(aov(vs_alc_react ~ condition, df_wide))
 
 
 ```
