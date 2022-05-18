@@ -466,7 +466,6 @@ anova(mod1, mod2, mod3, mod4)
 
 ```
 
-```
 
 
 ### VIF 
@@ -521,8 +520,9 @@ round(p.adjust(p, "BH"), 3)
 
 ```{r}
 test <- lmer(drinksz ~ 0 + craving_previousz * purpose_daily_previousz * vs_alc_react +
-               (0 + craving_previousz | pID) + 
+               (0 + craving_previousz | pID), 
              df_long)
+             
 summ(test, digits = 3, confint = TRUE)
 summary(test)
 lmer.beta(test)
@@ -639,30 +639,25 @@ summary(test)
 ## scanner craving scores [double check R1.4]
 ```{r}
 
-inscan <- read.csv( "~/Box Sync/MURI_Data_830189/data/EMA_Round1/Yoona_PurposeAnalysis/data/source/inscan_crave_deided.csv") 
+summary(df_wide$alc_react_crave)
+sd(df_wide$alc_react_crave)
 
 
-df2 <-merge(df_wide,inscan,by="pID", all=F)
-
-summary(df2$alc_react_crave)
-
-sd(inscan$alc_react_crave)
+summary(lm(craving_mean ~ alc_react_crave ,df_wide))
 
 
-summary(lm(craving_mean ~ alc_react_crave ,df2))
-
-
-df3=df2 %>% 
+df2=df_wide %>% 
   dplyr::select(pID, alc_react_crave)
 
-df_long <-merge(df_long,df3,by="pID", all=T)
+df_long <-merge(df_long,df2,by="pID", all=T)
 
-
+#added random effects for purpose
 test2 <- lmer(drinksz ~ 0 + alc_react_crave * purpose_daily_previousz * vs_alc_react +
+                (0 + purpose_daily_previousz | pID) +
               age + as.factor(gender) + as.factor(race_numeric) + rung_group + as.factor(condition),
             df_long)
             
-summary(test)
+summary(test2)
 
 ```
 
